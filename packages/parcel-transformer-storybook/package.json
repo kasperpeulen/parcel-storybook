@@ -11,9 +11,6 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@babel/generator": "^7.23.0",
-    "@babel/parser": "^7.23.0",
-    "@babel/types": "^7.23.0",
     "@parcel/plugin": "^2.16.3",
     "@parcel/source-map": "^2.1.1",
     "react-docgen-typescript": "^2.2.2",
