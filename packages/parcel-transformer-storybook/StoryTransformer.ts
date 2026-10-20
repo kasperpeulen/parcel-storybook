@@ -55,11 +55,13 @@ async function processCsf(
     let annotations = csf._storyAnnotations[name];
     if (annotations) {
       let hash = crypto.createHash('md5');
-      if (annotations.args) {
-        hash.update(code.slice(annotations.args.start!, annotations.args.end!));
-      }
-      if (annotations.parameters) {
-        hash.update(code.slice(annotations.parameters.start!, annotations.parameters.end!));
+      // Storybook 11 keeps a legacy `Story.story = {parameters}` as `story`, where Storybook 10
+      // spread it into the other annotations.
+      for (let key of ['args', 'parameters', 'story']) {
+        let annotation = annotations[key];
+        if (annotation) {
+          hash.update(code.slice(annotation.start!, annotation.end!));
+        }
       }
       storyHashes[name] = hash.digest('hex');
     }
