@@ -9,7 +9,7 @@ import {ComponentDoc} from 'react-docgen-typescript';
 // The story edits for Storybook 10, whose csf-tools hand out Babel nodes. `StoryTransformer.ts`
 // loads them there.
 
-// Babel prints import attributes with `with`, whichever keyword the story file used.
+// Print import attributes with `with`, whichever keyword the story file used.
 export const formatOptions: {importAttributesKeyword?: 'with'} = {importAttributesKeyword: 'with'};
 
 export async function editStories(
@@ -20,7 +20,8 @@ export async function editStories(
   refreshName: string | null,
   enrich: () => Promise<void>
 ) {
-  // `enrich` goes first, as the Fast Refresh wrapper below has to take in the statements it adds.
+  // `enrich` goes first: it prints each story's source before `addComponent` rewrites it, and the
+  // Fast Refresh wrapper below has to take in the statements it adds.
   await enrich();
 
   // Extract story functions into separate components. This enables React Fast Refresh to work properly.

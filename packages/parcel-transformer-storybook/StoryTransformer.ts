@@ -1,15 +1,26 @@
 import {Transformer} from '@parcel/plugin';
-import {enrichCsf, formatCsf, loadCsf} from 'storybook/internal/csf-tools';
+import {type CsfFile, enrichCsf, formatCsf, loadCsf} from 'storybook/internal/csf-tools';
 import path from 'path';
 import {getClient, getCacheDir} from './react-docgen-typescript';
 import {ComponentDoc} from 'react-docgen-typescript';
 import SourceMap, {type VLQMap} from '@parcel/source-map';
 
-type StoryEdits = typeof import('./StoryEdits.babel');
+// What `StoryEdits.babel.ts` and `StoryEdits.estree.ts` export.
+interface StoryEdits {
+  formatOptions: object;
+  editStories(
+    csf: CsfFile,
+    code: string,
+    filePath: string,
+    docs: ComponentDoc | null,
+    refreshName: string | null,
+    enrich: () => Promise<void>
+  ): Promise<void>;
+}
 
 // Storybook 11 replaced the Babel nodes of Storybook 10's csf-tools with ESTree nodes and edits to
-// the source text, so the story edits come in one module for each. Each is required only on the
-// Storybook it is written for, as neither loads on the other. `require` and not `import()`: Parcel
+// the source text, so the story edits come in one module for each. Each works only on the
+// Storybook it is written for, so only that one is required. `require` and not `import()`: Parcel
 // compiles the imports of a plugin it loads from source, but leaves `import()` to Node, which does
 // not find a `.ts` file without its extension.
 function loadStoryEdits(): StoryEdits {
