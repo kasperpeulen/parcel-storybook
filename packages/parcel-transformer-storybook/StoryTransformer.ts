@@ -1,7 +1,7 @@
 import {Transformer} from '@parcel/plugin';
 import {enrichCsf, formatCsf, loadCsf} from 'storybook/internal/csf-tools';
 import {parse} from '@babel/parser';
-import generate from '@babel/generator';
+import generate, {type GeneratorOptions} from '@babel/generator';
 import * as t from '@babel/types';
 import path from 'path';
 import crypto from 'crypto';
@@ -236,16 +236,17 @@ async function processCsf(
     wrapRefresh(ast.program, filePath, refreshName);
   }
 
-  let {code: compiledCode, map} = generate(
-    ast,
-    {
-      sourceFileName: filePath,
-      sourceMaps: true,
-      inputSourceMap: enriched.map,
-      importAttributesKeyword: 'with'
-    },
-    enriched.code
-  );
+  // The generator chains its map onto Storybook's. Its types lack these two options.
+  let generatorOptions: GeneratorOptions & {
+    inputSourceMap: unknown;
+    importAttributesKeyword: 'with';
+  } = {
+    sourceFileName: filePath,
+    sourceMaps: true,
+    inputSourceMap: enriched.map,
+    importAttributesKeyword: 'with'
+  };
+  let {code: compiledCode, map} = generate(ast, generatorOptions, enriched.code);
   return {code: compiledCode, map};
 }
 
