@@ -3,15 +3,14 @@ import {
   type ESTree,
   type ESTreeNode,
   type FunctionNode,
-  type SourceEditor,
   appendStatement,
   appendToList,
   isFunction,
   objectList,
+  objectProperty,
   outerSpan,
   removeStatement,
   statementSpan,
-  staticKey,
   textOf,
   wrapExpression
 } from 'storybook/internal/csf-tools';
@@ -32,10 +31,10 @@ export async function editStories(
   refreshName: string | null,
   enrich: () => Promise<void>
 ) {
-  let editor = csf._editor;
+  let {editor} = csf;
   // The Fast Refresh wrapper goes first, so statements appended below land after the `;` it ends a
   // default export with, and not after an import it moves up.
-  let closeRefresh = refreshName ? wrapRefresh(editor, filePath, refreshName) : null;
+  let closeRefresh = refreshName ? wrapRefresh(csf, filePath, refreshName) : null;
   await enrich();
 
   // Story functions become components, so that React Fast Refresh can update them. Their code stays
@@ -115,7 +114,7 @@ export async function editStories(
   let meta = csf._metaNodeIsSynthetic ? undefined : csf._metaNode;
   let statements: string[] = [];
   if (refreshName) {
-    for (let name in csf._storyExports) {
+    for (let {exportName: name} of csf.stories) {
       let node = csf.getStoryExport(name);
       // `story` is a legacy `Story.story = {…}`.
       let {args, parameters, story} = csf._storyAnnotations[name];
@@ -150,11 +149,10 @@ export async function editStories(
   closeRefresh?.(variables);
 }
 
+// A property written as `key: value` or `key() {…}`, not as a getter or setter.
 function property(object: ESTree.ObjectExpression, key: string) {
-  return object.properties.find(
-    (p): p is ESTree.ObjectProperty =>
-      p.type === 'Property' && p.kind === 'init' && staticKey(p) === key
-  );
+  let found = objectProperty(object, key);
+  return found?.kind === 'init' ? found : undefined;
 }
 
 function md5(...texts: string[]) {
@@ -169,10 +167,13 @@ function md5(...texts: string[]) {
 // `try` between the refresh prelude and postlude, and every export goes through a variable that
 // a final `export {…}` exports. The function it returns closes the `try` once the other edits
 // are made, declaring the variables they assign.
-function wrapRefresh(editor: SourceEditor, filePath: string, refreshName: string) {
-  let {edits, code} = editor;
+function wrapRefresh(csf: CsfFile, filePath: string, refreshName: string) {
   let wrapperPath = `${path.relative(path.dirname(filePath), __dirname)}/csf-hmr.js`;
   let helpers = `${refreshName}$Helpers`;
+  // It goes after the other imports, and moves up with them when they sit below other code.
+  csf.setImport({namespace: helpers}, wrapperPath);
+  let {editor} = csf;
+  let {edits, code} = editor;
   let exportVars: string[] = [];
   let exports: string[] = [];
   let exportVar = (exported: string) => {
@@ -229,7 +230,6 @@ function wrapRefresh(editor: SourceEditor, filePath: string, refreshName: string
   let start = first === -1 ? code.length : statementSpan(editor, body[first]).start;
   let header = [
     ...hoisted,
-    `import * as ${helpers} from ${JSON.stringify(wrapperPath)};`,
     ...(exportVars.length ? [`var ${exportVars.join(', ')};`] : []),
     `var ${refreshName}$PrevRefreshReg = window.$RefreshReg$, ${refreshName}$PrevRefreshSig = window.$RefreshSig$;`,
     `${helpers}.prelude(module);`,
